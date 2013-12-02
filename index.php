@@ -1,6 +1,8 @@
 <?php
 
 use Symfony\Component\HttpFoundation\Request;
+use FabriceKabongo\Util\Ranking\EloRanking;
+
 
 $app = require_once __DIR__ . '/app/bootstrap.php';
 $app['chemin_public'] = 'http://localhost/facemash/web/';
@@ -10,26 +12,34 @@ $app->get('/', function(Request $requete) use ($app) {
                     case 'gauche':
                         //on charge les données de la base de donnée
                         $sql = "SELECT 
-                                    a.vote AS vote_1, b.vote AS vote_2,a.photo AS photo_1
-                                   FROM photos a, photos b
-                                   WHERE a.id = :id1
-                                   AND b.id = :id2;";
+                                    a.vote AS vote_gauche,
+                                    b.vote AS vote_droite,
+                                    a.photo AS photo_gauche
+                                FROM
+                                    photos a,
+                                    photos b
+                                WHERE 
+                                    a.id = :id1
+                                AND 
+                                    b.id = :id2;";
                         $stmt = $app['db']->prepare($sql);
                         $stmt->bindValue(':id1', $app['session']->get('gauche'));
                         $stmt->bindValue(':id2', $app['session']->get('droite'));
                         $stmt->execute();
                         $donnee = $stmt->fetch();
                         //fin du chargement
-                        //on mets à jour les votes
-                        $voteGauche_actuelle = $donnee['vote_1'];
-                        $voteDroite_actuelle = $donnee['vote_2'];
-                        $voteGauche = $voteGauche_actuelle + ($voteDroite_actuelle / (($voteGauche_actuelle==0?1:0)+$voteGauche_actuelle));
-                        $voteDroite = $voteDroite_actuelle - ($voteDroite_actuelle / (($voteGauche_actuelle==0?1:0)+$voteGauche_actuelle));
-                        $app['db']->update('photos', array('vote' => $voteGauche), array('id'=>$app['session']->get('gauche')));
-                        $app['db']->update('photos', array('vote' => $voteDroite), array('id'=>$app['session']->get('droite')));
-                        //on fini
-                        //on recupere la nouvelle photo de droite
-                        $sql1 = 'SELECT * FROM photos WHERE id <> :id AND id<> :id1 ORDER BY rand()  LIMIT 0,1;';
+                        //on calcule les nouveaux points
+                        $nouveauVote = EloRanking::getNewRanking($donnee['vote_gauche'], $donnee['vote_droite']);
+                        
+                        //on enregistre les nouveaux points
+                        $app['db']->update('photos', array('vote' => $nouveauVote['A']), array('id'=>$app['session']->get('gauche')));
+                        $app['db']->update('photos', array('vote' => $nouveauVote['B']), array('id'=>$app['session']->get('droite')));
+                        
+                        /*
+                         * on recupere la nouvelle photo de droite. elle ne doit absolument pas être une des deux photos actuelles,
+                         * et elle doit être choisi de manière aléatoire.
+                         */
+                        $sql1 = 'SELECT id,photo FROM photos WHERE id <> :id AND id<> :id1 ORDER BY rand()  LIMIT 0,1;';
                         $stmt = $app['db']->prepare($sql1);
                         $stmt->bindValue(':id', $app['session']->get('gauche'));
                         $stmt->bindValue(':id1', $app['session']->get('droite'));
@@ -37,30 +47,39 @@ $app->get('/', function(Request $requete) use ($app) {
                         $droite = $stmt->fetch();
                         $app['session']->set('droite', $droite['id']);
                         //fin de la recuperation
-                        return $app['twig']->render('index.html.twig', array('gauche' => $donnee['photo_1'], 'droite' => $droite['photo']));
+                        return $app['twig']->render('index.html.twig', array('gauche' => $donnee['photo_gauche'], 'droite' => $droite['photo']));
                         break;
                     case 'droite':
                         //on charge les données de la base de donnée
-                        $sql = "SELECT 
-                                a.vote AS vote_1, b.vote AS vote_2,b.photo AS photo_2
-                               FROM photos a, photos b
-                               WHERE a.id = :id1
-                               AND b.id = :id2;";
+                        $sql = "SELECT
+                                    a.vote AS vote_gauche,
+                                    b.vote AS vote_droite,
+                                    b.photo AS photo_droite
+                               FROM 
+                                    photos a,
+                                    photos b
+                               WHERE 
+                                    a.id = :id1
+                               AND 
+                                    b.id = :id2;";
                         $stmt = $app['db']->prepare($sql);
                         $stmt->bindValue(':id1', $app['session']->get('gauche'));
                         $stmt->bindValue(':id2', $app['session']->get('droite'));
                         $stmt->execute();
                         $donnee = $stmt->fetch();
                         //fin du chargement
-                        //on mets à jour les votes
-                        $voteGauche_actuelle = $donnee['vote_1'];
-                        $voteDroite_actuelle = $donnee['vote_2'];
-                        $voteGauche = $voteGauche_actuelle - ($voteGauche_actuelle / (($voteDroite_actuelle==0?1:0)+$voteDroite_actuelle));
-                        $voteDroite = $voteDroite_actuelle + ($voteGauche_actuelle / (($voteDroite_actuelle==0?1:0)+$voteDroite_actuelle));
-                        $app['db']->update('photos', array('vote' => $voteGauche), array('id'=>$app['session']->get('gauche')));
-                        $app['db']->update('photos', array('vote' => $voteDroite), array('id'=>$app['session']->get('droite')));
+                        //on calcule les nouveaux points
+                        $nouveauVote = EloRanking::getNewRanking($donnee['vote_gauche'], $donnee['vote_droite'],false);
+                        
+                        //on met à jour les points
+                        $app['db']->update('photos', array('vote' => $nouveauVote['A']), array('id'=>$app['session']->get('gauche')));
+                        $app['db']->update('photos', array('vote' => $nouveauVote['B']), array('id'=>$app['session']->get('droite')));
                         //on fini
-                        //on recupere la nouvelle photo de droite
+                        
+                        /*
+                         * on recupere la nouvelle photo de gauche. elle ne doit absolument pas être une des deux photos actuelles,
+                         * et elle doit être choisi de manière aléatoire.
+                         */
                         $sql1 = 'SELECT * FROM photos WHERE id <> :id AND id<> :id1 ORDER BY rand()  LIMIT 0,1;';
                         $stmt = $app['db']->prepare($sql1);
                         $stmt->bindValue(':id', $app['session']->get('gauche'));
@@ -69,7 +88,7 @@ $app->get('/', function(Request $requete) use ($app) {
                         $gauche = $stmt->fetch();
                         $app['session']->set('gauche', $gauche['id']);
                         //fin de la recuperation
-                        return $app['twig']->render('index.html.twig', array('gauche' => $gauche['photo'], 'droite' => $donnee['photo_2']));
+                        return $app['twig']->render('index.html.twig', array('gauche' => $gauche['photo'], 'droite' => $donnee['photo_droite']));
                         break;
                 }
             } else {

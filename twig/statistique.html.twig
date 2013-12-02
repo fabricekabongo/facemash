@@ -1,0 +1,11 @@
+{% for photo in statistiques %}
+    {% if loop.first %}
+        <ul class="unstyled inline">
+     {% endif %}
+                <li>
+                    {{ loop.index }}: <img class="stat_img" src="{{ app.chemin_public }}images/{{ photo.photo }}" />
+                </li>
+      {% if loop.last %}
+          </ul>
+      {% endif %}
+{% endfor %}

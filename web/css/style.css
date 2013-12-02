@@ -1,0 +1,38 @@
+body
+{
+	margin: 0;
+}
+
+h1
+{
+	text-align: center;
+	margin: 0;
+	color: white;
+	font-size: 2.6em;
+	font-family: Verdana, "Trebuchet MS";
+}
+
+.header
+{
+	background-color: #8B170B;
+	margin: 0;
+	padding-top: 20px;
+	padding-bottom: 20px;
+}
+.center{
+    text-align: center;
+}
+.voter img
+{
+	height: 200px;
+	width: 200px;
+}
+.voter:hover img
+{
+	height: 220px;
+	width: 220px;
+}
+.stat_img{
+	height: 50px;
+	width: 50px;
+}

@@ -1,0 +1,14 @@
+{% extends "layout.html.twig" %}
+{% block contenu %}
+<div class="row-fluid">
+    <div class="span6 offset3">
+        <form action="{{ path('upload') }}" method="POST" {{ form_enctype(form) }} >
+            {{ form_rest(form) }}
+            <input type="submit" />
+        </form>
+    </div>
+</div>
+{% endblock %}
+{% block link %}
+<a href="{{ path('facemash') }}"><h4>Wanna vote? go go go!!!</h4></a>
+{% endblock %}

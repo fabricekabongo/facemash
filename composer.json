@@ -1,0 +1,13 @@
+{
+    "name": "fabrice-kabongo/facemash",
+    "description": "Description of project Facemash.",
+    "authors": [
+        {
+            "name": "Fabrice Kabongo",
+            "email": "fabrice.k.kabongo@gmail.com"
+        }
+    ],
+    "require": {
+
+    }
+}
